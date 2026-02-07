@@ -1,0 +1,17 @@
+# Environment
+.env
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# LightRAG storage
+rag_storage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

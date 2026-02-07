@@ -1,6 +1,7 @@
 """Entry point for the Handbook Generator application."""
 
 import asyncio
+import tempfile
 import gradio as gr
 from pathlib import Path
 
@@ -18,6 +19,9 @@ def main():
         print(f"Missing required environment variables: {', '.join(missing)}")
         print("Copy .env.example to .env and fill in your API keys.")
         return
+
+    # Stores the latest handbook text for download
+    _latest_handbook = {"text": ""}
 
     # ------------------------------------------------------------------ #
     #  Event handlers                                                      #
@@ -37,7 +41,7 @@ def main():
 
     async def handle_chat(message, history):
         if not message or not message.strip():
-            yield history, ""
+            yield history, "", gr.update(visible=False), None
             return
 
         history = history + [{"role": "user", "content": message}]
@@ -65,7 +69,7 @@ def main():
 
             # Stream handbook generation progress
             history = history + [{"role": "assistant", "content": "Planning handbook structure..."}]
-            yield history, ""
+            yield history, "", gr.update(visible=False), None
 
             word_count = 0
             for step_num, total_steps, accumulated_text in generate_handbook(
@@ -80,15 +84,21 @@ def main():
                     "role": "assistant",
                     "content": progress_header + accumulated_text,
                 }
-                yield history, ""
+                yield history, "", gr.update(visible=False), None
 
-            # Final update with completion message
+            # Save handbook for download
+            _latest_handbook["text"] = accumulated_text
+            handbook_path = Path(config.RAG_WORKING_DIR) / "handbook.md"
+            handbook_path.parent.mkdir(parents=True, exist_ok=True)
+            handbook_path.write_text(accumulated_text, encoding="utf-8")
+
+            # Final update with completion message + show download
             final_header = f"**Handbook complete: {word_count:,} words | {total_steps} sections**\n\n---\n\n"
             history[-1] = {
                 "role": "assistant",
                 "content": final_header + accumulated_text,
             }
-            yield history, ""
+            yield history, "", gr.update(visible=True), str(handbook_path)
 
         else:
             # Regular RAG chat
@@ -106,7 +116,7 @@ def main():
                 system="You are a helpful assistant. Answer based on the provided document context. If the context is insufficient, say so.",
             )
             history = history + [{"role": "assistant", "content": response}]
-            yield history, ""
+            yield history, "", gr.update(visible=False), None
 
     # ------------------------------------------------------------------ #
     #  Build UI                                                            #
@@ -128,6 +138,12 @@ def main():
                 )
                 upload_btn = gr.Button("Index PDFs", variant="primary")
                 upload_status = gr.Textbox(label="Status", interactive=False, lines=4)
+                gr.Markdown("---")
+                download_file = gr.File(
+                    label="Download Handbook",
+                    visible=False,
+                    interactive=False,
+                )
 
             with gr.Column(scale=3):
                 chatbot = gr.Chatbot(label="Chat", height=550)
@@ -141,8 +157,16 @@ def main():
 
         # Wire events
         upload_btn.click(handle_upload, inputs=[pdf_upload], outputs=[upload_status])
-        send_btn.click(handle_chat, inputs=[msg, chatbot], outputs=[chatbot, msg])
-        msg.submit(handle_chat, inputs=[msg, chatbot], outputs=[chatbot, msg])
+        send_btn.click(
+            handle_chat,
+            inputs=[msg, chatbot],
+            outputs=[chatbot, msg, download_file, download_file],
+        )
+        msg.submit(
+            handle_chat,
+            inputs=[msg, chatbot],
+            outputs=[chatbot, msg, download_file, download_file],
+        )
 
     app.launch(theme=gr.themes.Soft())
 

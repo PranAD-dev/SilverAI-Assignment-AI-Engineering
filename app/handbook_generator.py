@@ -10,7 +10,7 @@ from app.llm_client import chat
 # ---------------------------------------------------------------------------
 
 PLAN_PROMPT = """\
-I need you to help me break down the following long-form writing instruction into multiple subtasks. Each subtask will guide the writing of one section in the handbook, and should include the main points and word count requirements for that section.
+I need you to create a detailed outline for a comprehensive, professional handbook. The handbook MUST be at least 20,000 words. Each subtask will guide the writing of one section.
 
 The writing instruction is as follows:
 
@@ -20,25 +20,31 @@ Here is context retrieved from the uploaded documents to inform your plan:
 
 {context}
 
-Please break it down in the following format, with each subtask taking up one line:
+REQUIREMENTS:
+- Create at least 30 subtasks (sections)
+- Each section should target 600-800 words
+- Include: Table of Contents, Executive Summary, Introduction, multiple detailed chapters, case studies, practical examples, best practices, future directions, conclusion, glossary, and references
+- Be highly specific in each subtask description — give detailed content guidance
 
-Paragraph 1 - Main Point: [Describe the main point of the paragraph, in detail] - Word Count: [Word count requirement, e.g., 400 words]
+Format each subtask on its own line exactly like this:
 
-Paragraph 2 - Main Point: [Describe the main point of the paragraph, in detail] - Word Count: [word count requirement, e.g. 1000 words].
+Paragraph 1 - Main Point: [Detailed description of what to write] - Word Count: [target, e.g., 700 words]
+
+Paragraph 2 - Main Point: [Detailed description of what to write] - Word Count: [target, e.g., 700 words]
 
 ...
 
-Make sure that each subtask is clear and specific, and that all subtasks cover the entire content of the writing instruction. Each subtask's paragraph should be no less than 200 words and no more than 1000 words. Aim for at least 25-30 subtasks to reach the 20,000-word target. Include a table of contents section at the beginning. Do not output any other content.\
+Do not output any other content besides the subtask lines.\
 """
 
 WRITE_PROMPT = """\
-You are an excellent writing assistant. I will give you an original writing instruction and my planned writing steps. I will also provide you with the text I have already written. Please help me continue writing the next paragraph based on the writing instruction, writing steps, and the already written text.
+You are an expert technical writer creating a comprehensive handbook. Write the assigned section with depth, detail, and substance. Use specific examples, data points, and thorough explanations.
 
 Writing instruction:
 
 {instruction}
 
-Writing steps:
+Full writing plan:
 
 {plan}
 
@@ -46,7 +52,14 @@ Already written text (last 3000 words shown for context):
 
 {text}
 
-Please integrate the original writing instruction, writing steps, and the already written text, and now continue writing {step}. If needed, you can add a small subtitle at the beginning. Remember to only output the paragraph you write, without repeating the already written text. As this is an ongoing work, omit open-ended conclusions or other rhetorical hooks.\
+YOUR TASK: Write {step}
+
+IMPORTANT RULES:
+- You MUST write AT LEAST the word count specified in the step above
+- Include detailed explanations, examples, and analysis
+- Use proper markdown formatting with headers (##, ###), bullet points, and emphasis where appropriate
+- Only output the new section — do NOT repeat already written text
+- Do NOT write a conclusion or wrap up the document — more sections will follow\
 """
 
 
